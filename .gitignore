@@ -1,0 +1,35 @@
+# 依赖
+node_modules/
+
+# 数据库文件一律不入库（可能含真实数据与凭证）
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+config.db
+config.db.*
+!config.example.json
+
+# 环境变量 / 密钥
+.env
+.env.*
+.env.json
+.env.json.bak
+
+# Oracle Instant Client（受 Oracle 许可约束 + 超过 GitHub 100MB 限制）
+# 请从 Oracle 官网自行下载后放到这里；只保留说明文件
+oci/*
+!oci/README.md
+
+# 日志与临时文件
+*.log
+npm-debug.log*
+.tmp/
+temp/
+
+# 编辑器 / 系统
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

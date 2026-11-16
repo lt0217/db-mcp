@@ -1,0 +1,17 @@
+{
+  "datasources": {
+    "sqlite": {
+      "local": {
+        "url": "sqlite:./local.db",
+        "description": "本地 SQLite 示例库：练习用，无真实数据"
+      }
+    },
+    "postgres": {
+      "master": {
+        "url": "postgres://user:password@localhost:5432/mydb",
+        "description": "示例主库：业务数据查询（请替换为你自己的地址与账号）",
+        "defaultSchema": "public"
+      }
+    }
+  }
+}

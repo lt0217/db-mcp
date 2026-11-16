@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>db-mcp 数据源配置</title>
+<link rel="stylesheet" href="node_modules/element-plus/dist/index.css" />
+<link rel="stylesheet" href="node_modules/element-plus/theme-chalk/dark/css-vars.css" />
+<style>
+  /* ============ Design tokens ============ */
+  :root{
+    --font: system-ui,-apple-system,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;
+    --mono: ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    --grad: linear-gradient(135deg,#38bdf8 0%,#818cf8 55%,#c084fc 100%);
+    --grad-soft: linear-gradient(135deg,rgba(56,189,248,.16),rgba(129,140,248,.12) 55%,rgba(192,132,252,.16));
+    --radius: 18px;
+    /* light */
+    --bg:#eef2f7; --fg:#0f172a; --muted:#64748b;
+    --card-bg:#ffffff; --card-bg-soft:#f8fafc;
+    --border:rgba(100,116,139,0.16); --border-strong:rgba(100,116,139,0.34);
+    --shadow:0 14px 34px rgba(15,23,42,0.10);
+    --shadow-sm:0 4px 14px rgba(15,23,42,0.08);
+  }
+  html.dark{
+    --bg:#070b18; --fg:#e9eff8; --muted:#93a4be;
+    --card-bg:rgba(17,24,39,0.58); --card-bg-soft:rgba(11,18,32,0.42);
+    --border:rgba(148,163,184,0.14); --border-strong:rgba(148,163,184,0.32);
+    --shadow:0 22px 54px rgba(0,0,0,0.46);
+    --shadow-sm:0 6px 18px rgba(0,0,0,0.28);
+  }
+
+  /* ============ Base ============ */
+  *{ box-sizing:border-box; }
+  body{ margin:0; color:var(--fg); font-family:var(--font); background:var(--bg);
+    -webkit-font-smoothing:antialiased; transition:background .35s ease, color .35s ease; }
+  html:not(.dark) body{
+    background:
+      radial-gradient(1100px 600px at 85% -10%, rgba(56,189,248,.16), transparent 60%),
+      radial-gradient(900px 540px at -8% 8%, rgba(129,140,248,.16), transparent 55%),
+      var(--bg);
+    background-attachment:fixed; }
+  html.dark body{
+    background:
+      radial-gradient(1200px 620px at 82% -12%, rgba(99,102,241,.22), transparent 60%),
+      radial-gradient(1000px 560px at -8% 6%, rgba(34,211,238,.15), transparent 55%),
+      radial-gradient(900px 720px at 50% 118%, rgba(192,132,252,.14), transparent 60%),
+      var(--bg);
+    background-attachment:fixed; }
+  ::selection{ background:rgba(129,140,248,.35); }
+  ::-webkit-scrollbar{ width:10px; height:10px; }
+  ::-webkit-scrollbar-thumb{ background:var(--border-strong); border-radius:999px; border:2px solid transparent; background-clip:content-box; }
+  ::-webkit-scrollbar-thumb:hover{ background:var(--muted); background-clip:content-box; }
+  ::-webkit-scrollbar-track{ background:transparent; }
+
+  @keyframes fadeUp{ from{ opacity:0; transform:translateY(10px);} to{ opacity:1; transform:none;} }
+  @keyframes popIn{ from{ opacity:0; transform:scale(.96);} to{ opacity:1; transform:scale(1);} }
+
+  /* ============ Layout ============ */
+  /* Page locked to viewport height; only the content area scrolls inside. */
+  html, body{ height:100%; }
+  body{ overflow:hidden; }
+  /* Vue mount point must also be full-height so .wrap{height:100%} resolves. */
+  #app{ height:100%; }
+  .wrap{ max-width:1360px; margin:0 auto; padding:24px 26px 18px;
+    height:100%; display:flex; flex-direction:column; overflow:hidden; }
+
+  /* ============ Hero ============ */
+  .hero{ display:flex; align-items:center; gap:22px; margin-bottom:20px; padding:24px 30px; flex:0 0 auto;
+    border-radius:24px; border:1px solid var(--border); box-shadow:var(--shadow);
+    background:linear-gradient(120deg, rgba(56,189,248,.10), rgba(129,140,248,.07) 50%, rgba(192,132,252,.10));
+    backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
+    animation:fadeUp .45s ease both; flex-wrap:wrap; }
+  .logo{ width:64px; height:64px; border-radius:19px; flex:0 0 auto; display:grid; place-items:center;
+    background:var(--grad); position:relative; box-shadow:0 10px 30px rgba(99,102,241,.40); }
+  .logo::after{ content:""; position:absolute; inset:-7px; border-radius:26px; background:var(--grad);
+    filter:blur(20px); opacity:.45; z-index:-1; }
+  .logo svg{ width:34px; height:34px; }
+  .hero-text{ min-width:0; flex:1; }
+  .eyebrow{ font-size:11px; font-weight:700; letter-spacing:2.5px; text-transform:uppercase;
+    color:var(--muted); margin-bottom:6px; display:flex; align-items:center; gap:8px; }
+  .eyebrow::before{ content:""; width:22px; height:2px; border-radius:2px; background:var(--grad); }
+  .hero h1{ margin:0; font-size:27px; font-weight:850; letter-spacing:.3px; line-height:1.2;
+    background:var(--grad); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .hero .sub{ margin:9px 0 0; color:var(--muted); font-size:13.5px; line-height:1.6; max-width:640px; }
+  .hero-actions{ margin-left:auto; display:flex; align-items:center; gap:12px; }
+  .hero-pill{ display:flex; align-items:center; gap:8px; padding:6px 14px; border-radius:999px;
+    border:1px solid var(--border); background:var(--card-bg-soft); color:var(--fg); font-size:12.5px; font-weight:600; }
+  .hero-pill .pulse{ width:8px; height:8px; border-radius:50%; background:#34d399; box-shadow:0 0 0 0 rgba(52,211,153,.6); animation:pulse 2s infinite; }
+  @keyframes pulse{ 0%{box-shadow:0 0 0 0 rgba(52,211,153,.55);} 70%{box-shadow:0 0 0 7px rgba(52,211,153,0);} 100%{box-shadow:0 0 0 0 rgba(52,211,153,0);} }
+
+  /* ============ Sections ============ */
+  .section{ margin-bottom:0; border-radius:var(--radius); box-shadow:var(--shadow);
+    border:1px solid var(--border); background:var(--card-bg);
+    backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+    overflow:hidden; animation:fadeUp .5s ease both;
+    flex:1 1 auto; min-height:0; display:flex; flex-direction:column; }
+  .section > .el-card__header{ border-bottom:1px solid var(--border); padding:16px 22px; flex:0 0 auto; }
+  .section > .el-card__body{ padding:20px 22px 26px; flex:1 1 auto; min-height:0; overflow-y:auto;
+    scrollbar-gutter:stable; }
+  /* Distinct inner scrollbar for the content area (thin, clear, right-aligned) */
+  .section > .el-card__body::-webkit-scrollbar{ width:8px; }
+  .section > .el-card__body::-webkit-scrollbar-track{ background:transparent; }
+  .section > .el-card__body::-webkit-scrollbar-thumb{ background:var(--border-strong); border-radius:999px;
+    border:2px solid transparent; background-clip:content-box; }
+  .section > .el-card__body::-webkit-scrollbar-thumb:hover{ background:var(--muted); background-clip:content-box; }
+  .hint{ color:var(--muted); font-size:12px; margin-top:8px; line-height:1.6; }
+  .card-head{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+  .block-title{ font-size:15px; font-weight:750; margin-bottom:0; display:flex; align-items:center; gap:9px; }
+  .block-title .ic{ width:26px; height:26px; border-radius:9px; display:grid; place-items:center;
+    background:var(--grad-soft); color:var(--fg); font-size:13px; }
+
+  /* ============ Cards (3-per-row grid) ============ */
+  /* Fixed 3 columns; a short last row aligns left (no stretching). */
+  .cards{ display:grid; grid-template-columns:repeat(3, 1fr); gap:18px; }
+  .ds-card{ position:relative; overflow:hidden; border:1px solid var(--border); border-radius:16px;
+    padding:16px 16px 15px; transition:transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+    background:var(--card-bg-soft); animation:popIn .3s ease both;
+    display:flex; flex-direction:column; height:100%; min-width:0; }
+  .ds-card::before{ content:""; position:absolute; top:0; left:0; right:0; height:3px;
+    background:linear-gradient(90deg, var(--accent, #64748b), transparent 78%); opacity:.75; }
+  .ds-card:hover{ transform:translateY(-3px); box-shadow:var(--shadow);
+    border-color:var(--border-strong); }
+  .ds-card .top{ display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+  .ds-card .top .status-dot{ margin-left:6px; }
+  .ds-logo{ width:32px; height:32px; object-fit:contain; border-radius:9px; flex:0 0 auto;
+    background:var(--card-bg); border:1px solid var(--border); padding:5px; }
+  /* name sits on the right; type label next to logo, left */
+  .ds-name{ font-weight:750; font-size:14.5px; margin-left:auto; min-width:0;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:right; }
+  .ds-type{ font-size:10.5px; font-weight:700; letter-spacing:.8px; text-transform:uppercase;
+    display:flex; align-items:center; gap:6px; color:var(--muted); flex:0 0 auto; }
+  .ds-dot{ width:7px; height:7px; border-radius:50%; flex:0 0 auto; box-shadow:0 0 10px var(--accent,transparent); }
+
+  /* Connection status dot: grey=idle, blue(pulse)=testing, green=ok, red=err */
+  .status-dot{ width:9px; height:9px; border-radius:50%; flex:0 0 auto; display:inline-block; }
+  .status-dot.idle{ background:#64748b; opacity:.55; }
+  .status-dot.testing{ background:#38bdf8; animation:pulse-dot 1s ease-in-out infinite; }
+  .status-dot.ok{ background:#34d399; box-shadow:0 0 8px rgba(52,211,153,.7); }
+  .status-dot.err{ background:#f87171; box-shadow:0 0 8px rgba(248,113,113,.7); }
+  @keyframes pulse-dot{ 0%,100%{ opacity:1; transform:scale(1); } 50%{ opacity:.45; transform:scale(.8); } }
+
+  /* Key/value meta grid: tidy 2-column layout, values single-line with ellipsis */
+  .ds-meta-grid{ display:grid; grid-template-columns:1fr 1fr; gap:9px 14px; margin-bottom:14px; }
+  .ds-meta-item{ min-width:0; }
+  .ds-meta-item.full{ grid-column:1 / -1; }
+  .ds-meta-label{ display:block; font-size:10.5px; font-weight:700; letter-spacing:.5px;
+    text-transform:uppercase; color:var(--muted); opacity:.75; margin-bottom:3px; }
+  .ds-meta-value{ display:block; font-size:12.5px; font-weight:600; color:var(--fg);
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+  /* Footer: connection string + actions pinned to card bottom for equal heights */
+  .ds-foot{ margin-top:auto; }
+  .conn-row{ display:flex; align-items:center; gap:4px; flex-wrap:nowrap; }
+  .conn-str{ font-family:var(--mono); font-size:11.5px; padding:6px 10px; border-radius:9px;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; min-width:0;
+    background:rgba(148,163,184,0.10); color:var(--muted); border:1px solid var(--border); }
+  .conn-row .el-button{ flex:0 0 auto; }
+  .ds-actions{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:10px; }
+  .empty{ text-align:center; color:var(--muted); font-size:13.5px; padding:44px 14px;
+    border:1px dashed var(--border-strong); border-radius:16px; background:var(--card-bg-soft); }
+  .empty .big{ font-size:34px; display:block; margin-bottom:10px; opacity:.8; }
+  .actions{ display:flex; gap:10px; margin-top:20px; flex-wrap:wrap; }
+  /* Toolbar at the top of the content area */
+  /* Inline toolbar next to the "数据源" heading, same row */
+  .actions-top{ margin:0 0 0 6px; align-items:center; display:inline-flex; gap:8px; flex-wrap:nowrap; }
+  /* Pagination bar: centered, tidy spacing */
+  /* Pagination bar: pushed to the right edge */
+  .pager-wrap{ display:flex; justify-content:flex-end; margin-top:22px; }
+  .pager-wrap .el-pagination{ --el-pagination-button-bg-color:var(--card-bg-soft);
+    --el-pagination-hover-color:#818cf8; }
+  .pager-wrap .el-pagination.is-background .el-pager li{ border-radius:8px; }
+  .pager-wrap .el-pagination.is-background .el-pager li.is-active{ background:var(--grad); color:#08121f; font-weight:700; }
+  .status{ font-size:13px; margin-top:16px; min-height:18px; font-weight:650; display:flex; align-items:center; gap:7px; }
+  .status.ok{ color:#34d399; } .status.err{ color:#f87171; }
+  .footnote{ color:var(--muted); font-size:12px; text-align:center; margin-top:12px; opacity:.8; flex:0 0 auto; }
+
+  /* ============ Table (refined) ============ */
+  .el-table{ --el-table-bg-color:transparent; --el-table-tr-bg-color:transparent;
+    --el-table-header-bg-color:var(--card-bg-soft); --el-table-border-color:var(--border);
+    --el-table-row-hover-bg-color:rgba(129,140,248,0.07); border-radius:12px; overflow:hidden; }
+  .el-table th.el-table__cell{ font-weight:700; color:var(--muted); font-size:11.5px;
+    letter-spacing:.4px; text-transform:uppercase; padding:11px 0; }
+  .el-table td.el-table__cell{ padding:10px 0; }
+  .el-table .cell{ padding:0 12px; }
+  /* Cell helpers: single-line, aligned, minimal */
+  .t-cell{ display:flex; align-items:center; gap:8px; min-width:0; }
+  .t-logo{ width:18px; height:18px; object-fit:contain; flex:0 0 auto; opacity:.92; }
+  .t-type{ display:inline-flex; align-items:center; gap:8px; min-width:0; }
+  .t-type .label{ font-size:12.5px; font-weight:700; letter-spacing:.3px; white-space:nowrap; }
+  .t-name{ font-weight:650; font-size:13px; }
+  .t-ellipsis{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .t-muted{ color:var(--muted); }
+  .t-conn-str{ font-family:var(--mono); font-size:11.5px; color:var(--muted);
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; min-width:0; }
+  .t-actions{ display:inline-flex; align-items:center; gap:6px; flex-wrap:nowrap; }
+  .el-table__row{ transition:background .12s ease; }
+
+  /* ============ Buttons (primary gradient) ============ */
+  .el-button--primary:not(.is-plain):not(.is-link):not(.is-text){ background:var(--grad); border:none; color:#08121f; font-weight:650; }
+  .el-button--primary:not(.is-plain):not(.is-link):not(.is-text):hover{ filter:brightness(1.10); opacity:.95; }
+  .el-button{ transition:transform .12s ease, box-shadow .12s ease, filter .12s ease; }
+  .el-button:not(.is-disabled):hover{ transform:translateY(-1px); }
+
+  /* Inline icon button (copy / reveal-password) with an SVG glyph */
+  .icon-btn{ display:inline-flex; align-items:center; justify-content:center; padding:5px !important;
+    border-radius:8px; line-height:1; flex:0 0 auto; }
+  .icon-btn svg{ width:15px; height:15px; display:block; transition:transform .18s ease, color .18s ease, opacity .18s ease; }
+  .icon-btn:not(.is-disabled):hover svg{ transform:scale(1.12); }
+  .icon-btn .glyph-copy{ color:var(--muted); }
+  .icon-btn:hover .glyph-copy{ color:var(--fg); }
+  .icon-btn .glyph-check{ color:#34d399; }
+  /* swap animation between copy and check glyphs */
+  .icon-btn .swap{ animation:glyphIn .22s ease both; }
+  @keyframes glyphIn{ from{ opacity:0; transform:scale(.6);} to{ opacity:1; transform:scale(1);} }
+
+  /* ============ Dialogs ============ */
+  .el-dialog{ border-radius:20px !important; border:1px solid var(--border);
+    background:var(--card-bg); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px); box-shadow:var(--shadow); }
+  .el-dialog__header{ padding:22px 24px 8px; }
+  .el-dialog__title{ font-weight:800; font-size:17px; }
+  .el-dialog__body{ padding:18px 24px; }
+  .el-dialog__footer{ padding:12px 24px 20px; }
+  .el-select__wrapper{ border-radius:10px; }
+
+  /* ============ Directory browser ============ */
+  .dir-crumbs{ display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+  .dir-path{ flex:1; min-width:0; font-size:12.5px; padding:7px 11px; border-radius:9px; word-break:break-all;
+    background:rgba(148,163,184,0.12); color:var(--fg); font-family:var(--mono); }
+  .dir-list{ max-height:340px; overflow:auto; border:1px solid var(--border); border-radius:12px; }
+  .dir-item{ display:flex; align-items:center; gap:10px; padding:10px 13px; cursor:pointer;
+    border-bottom:1px solid var(--border); transition:background .12s ease; }
+  .dir-item:last-child{ border-bottom:none; }
+  .dir-item:hover{ background:rgba(129,140,248,0.12); }
+  .dir-ico{ font-size:16px; }
+  .dir-name{ font-size:13.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+  /* ============ Responsive ============ */
+  @media (max-width:640px){
+    .hero{ padding:22px; gap:16px; }
+    .hero-actions{ margin-left:0; width:100%; justify-content:space-between; }
+    .section > .el-card__body{ padding:16px; }
+    .cards{ grid-template-columns:1fr; }
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script type="text/x-template" id="app-tpl">
+  <el-config-provider :locale="zhCnLocale">
+  <div class="wrap">
+    <div class="hero">
+      <div class="logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#08121f" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.66 3.58 3 8 3s8-1.34 8-3V5"/><path d="M4 11v6c0 1.66 3.58 3 8 3s8-1.34 8-3v-6"/>
+        </svg>
+      </div>
+      <div class="hero-text">
+        <div class="eyebrow">Local Admin · MCP</div>
+        <h1>db-mcp 数据源配置</h1>
+        <p class="sub">配置保存在 config.db（与 MCP 服务共用）。按 类型/IP/端口/库名/账号 填写，保存时自动拼成连接串；点「测试」可真连库验证。</p>
+      </div>
+      <div class="hero-actions">
+        <div class="hero-pill"><span class="pulse"></span>本地服务</div>
+        <el-tag effect="dark" type="info" round>共 {{ list.length }} 个数据源</el-tag>
+        <el-button circle @click="toggleTheme" :title="theme === 'dark' ? '切换到浅色' : '切换到深色'">{{ theme === 'dark' ? '🌙' : '☀️' }}</el-button>
+      </div>
+    </div>
+
+    <el-card class="section">
+      <template #header>
+        <div class="card-head">
+          <div class="block-title">
+            <span class="ic">🛢</span>数据源 <el-badge :value="list.length" :max="999" />
+            <span class="actions actions-top">
+              <el-button size="small" @click="load">↻ 重新加载</el-button>
+              <el-button size="small" type="primary" plain @click="testAll">测试全部连接</el-button>
+            </span>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <el-radio-group v-model="view" size="small">
+              <el-radio-button value="card">卡片</el-radio-button>
+              <el-radio-button value="list">列表</el-radio-button>
+            </el-radio-group>
+            <el-button type="primary" size="small" @click="openAdd">＋ 添加</el-button>
+            <el-button size="small" @click="pickFile">导入</el-button>
+            <el-button size="small" @click="exportCfg">导出</el-button>
+          </div>
+        </div>
+      </template>
+
+      <div v-if="view === 'card'">
+        <div v-if="list.length === 0" class="empty"><span class="big">🗄</span>还没有数据源，点「＋ 添加」创建一个吧</div>
+        <div v-else class="cards">
+          <div class="ds-card" v-for="(it, idx) in pagedList" :key="(page-1)*pageSize+idx" :style="{ '--accent': colorFor(it.type) }">
+            <div class="top">
+              <img class="ds-logo" :src="logoFor(it.type)" :alt="it.type" />
+              <span class="ds-type"><span class="ds-dot" :style="{ background: colorFor(it.type) }"></span>{{ it.type }}</span>
+              <span class="ds-name" :title="it.name">{{ it.name }}</span>
+              <span class="status-dot" :class="it.status || 'idle'" :title="statusTitle(it)"></span>
+            </div>
+
+            <div class="ds-meta-grid">
+              <div v-if="isFile(it.type)" class="ds-meta-item full">
+                <span class="ds-meta-label">路径</span>
+                <span class="ds-meta-value" :title="it.filePath">{{ it.filePath || '—' }}</span>
+              </div>
+              <template v-else>
+                <div class="ds-meta-item full">
+                  <span class="ds-meta-label">主机</span>
+                  <span class="ds-meta-value" :title="it.host">{{ it.host || '—' }}</span>
+                </div>
+                <div class="ds-meta-item">
+                  <span class="ds-meta-label">端口</span>
+                  <span class="ds-meta-value">{{ it.port || '—' }}</span>
+                </div>
+                <div class="ds-meta-item">
+                  <span class="ds-meta-label">数据库</span>
+                  <span class="ds-meta-value" :title="it.database">{{ it.database || '—' }}</span>
+                </div>
+                <div class="ds-meta-item" v-if="it.user">
+                  <span class="ds-meta-label">用户</span>
+                  <span class="ds-meta-value" :title="it.user">{{ it.user }}</span>
+                </div>
+                <div class="ds-meta-item" v-if="it.type === 'oracle' && it.oracleLibDir">
+                  <span class="ds-meta-label">客户端库</span>
+                  <span class="ds-meta-value" :title="it.oracleLibDir">{{ it.oracleLibDir }}</span>
+                </div>
+                <div class="ds-meta-item" v-if="it.defaultSchema">
+                  <span class="ds-meta-label">默认 Schema</span>
+                  <span class="ds-meta-value" :title="it.defaultSchema">{{ it.defaultSchema }}</span>
+                </div>
+              </template>
+              <div class="ds-meta-item" v-if="it.description">
+                <span class="ds-meta-label">描述</span>
+                <span class="ds-meta-value" :title="it.description">{{ it.description }}</span>
+              </div>
+              <div class="ds-meta-item">
+                <span class="ds-meta-label">启用</span>
+                <span class="ds-meta-value">
+                  <el-tag v-if="it.enabled !== false" type="success" size="small">启用</el-tag>
+                  <el-tag v-else type="info" size="small">禁用</el-tag>
+                </span>
+              </div>
+            </div>
+
+            <div class="ds-foot">
+              <div class="conn-row">
+                <code class="conn-str" :title="connMask(it)">{{ connMask(it) }}</code>
+                <el-button size="small" text @click="togglePwd((page-1)*pageSize+idx)" :title="it.showPwd ? '隐藏密码' : '显示密码'">{{ it.showPwd ? '🙈' : '👁' }}</el-button>
+                <el-button size="small" text class="icon-btn" @click="copyConn((page-1)*pageSize+idx)" :title="it.copied ? '已复制' : '复制连接串'">
+                  <svg v-if="it.copied" class="glyph-check swap" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                  <svg v-else class="glyph-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2.5"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                </el-button>
+              </div>
+              <div class="ds-actions">
+                <el-button size="small" @click="testItem((page-1)*pageSize+idx)" :loading="it.testing">测试</el-button>
+                <el-button size="small" type="success" plain @click="openEdit((page-1)*pageSize+idx)">编辑</el-button>
+                <el-button size="small" type="danger" plain @click="removeItem((page-1)*pageSize+idx)">删除</el-button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div v-else>
+        <el-table :data="pagedList" v-if="list.length" style="width:100%">
+          <el-table-column label="类型" width="150">
+            <template #default="{ row }">
+              <span class="t-type">
+                <span class="status-dot" :class="row.status || 'idle'" :title="statusTitle(row)"></span>
+                <img class="t-logo" :src="logoFor(row.type)" :alt="row.type" />
+                <span class="label" :style="{ color: colorFor(row.type) }">{{ row.type }}</span>
+              </span>
+            </template>
+          </el-table-column>
+          <el-table-column label="名称" width="140">
+            <template #default="{ row }"><span class="t-name t-ellipsis" :title="row.name">{{ row.name }}</span></template>
+          </el-table-column>
+          <el-table-column label="主机 / 路径" min-width="160">
+            <template #default="{ row }">
+              <span class="t-ellipsis" :title="isFile(row.type) ? row.filePath : row.host">{{ isFile(row.type) ? row.filePath : (row.host || '-') }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="端口" width="76">
+            <template #default="{ row }"><span class="t-muted">{{ row.port || '—' }}</span></template>
+          </el-table-column>
+          <el-table-column label="数据库" width="130">
+            <template #default="{ row }">
+              <span class="t-ellipsis t-muted" :title="row.database">{{ row.database || '—' }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="说明" min-width="200">
+            <template #default="{ row }">
+              <span class="t-ellipsis t-muted" :title="row.description">{{ row.description || '—' }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="启用" width="86">
+            <template #default="{ row }">
+              <el-switch v-model="row.enabled" @change="() => toggleEnabled(row)" />
+            </template>
+          </el-table-column>
+          <el-table-column label="连接串" min-width="220">
+            <template #default="{ row }">
+              <div class="t-cell">
+                <code class="t-conn-str" :title="connMask(row)">{{ connMask(row) }}</code>
+                <el-button size="small" text @click="togglePwd(list.indexOf(row))" :title="row.showPwd ? '隐藏密码' : '显示密码'">{{ row.showPwd ? '🙈' : '👁' }}</el-button>
+                <el-button size="small" text class="icon-btn" @click="copyConn(list.indexOf(row))" :title="row.copied ? '已复制' : '复制连接串'">
+                  <svg v-if="row.copied" class="glyph-check swap" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                  <svg v-else class="glyph-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2.5"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                </el-button>
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="180" fixed="right">
+            <template #default="{ row, $index }">
+              <span class="t-actions">
+                <el-button size="small" text type="primary" @click="testItem((page-1)*pageSize+$index)" :loading="row.testing">测试</el-button>
+                <el-button size="small" text type="success" @click="openEdit((page-1)*pageSize+$index)">编辑</el-button>
+                <el-button size="small" text type="danger" @click="removeItem((page-1)*pageSize+$index)">删除</el-button>
+              </span>
+            </template>
+          </el-table-column>
+        </el-table>
+        <div v-else class="empty"><span class="big">🗄</span>还没有数据源，点「＋ 添加」创建一个吧</div>
+      </div>
+
+      <div v-if="list.length > pageSize" class="pager-wrap">
+        <el-pagination
+          v-model:current-page="page"
+          :page-size="pageSize"
+          :total="list.length"
+          layout="prev, pager, next, jumper, total"
+          background
+          @current-change="onPageChange"
+        />
+      </div>
+      <div v-if="statusMsg" :class="['status', statusOk ? 'ok' : 'err']">{{ statusOk ? '✓' : '✗' }} {{ statusMsg }}</div>
+    </el-card>
+
+    <div class="footnote">db-mcp · 本地配置工具 · 数据不出本机</div>
+
+    <input type="file" ref="fileInput" accept="application/json,.json" style="display:none" @change="onFileChange" />
+
+    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="560px" :close-on-click-modal="false" :before-close="handleClose" draggable>
+      <el-form label-width="92px">
+        <el-form-item label="类型">
+          <el-select v-model="form.type" style="width:100%" @change="onTypeChange">
+            <el-option v-for="t in TYPES" :key="t" :label="t" :value="t" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="名称" required>
+          <el-input v-model="form.name" placeholder="default" />
+        </el-form-item>
+        <template v-if="!isFile(form.type)">
+          <el-form-item label="主机 / IP" required><el-input v-model="form.host" placeholder="127.0.0.1 或 db.example.com" /></el-form-item>
+          <el-form-item label="端口"><el-input v-model="form.port" placeholder="5432" /></el-form-item>
+          <el-form-item label="数据库名"><el-input v-model="form.database" placeholder="dbname" /></el-form-item>
+          <el-form-item label="用户名"><el-input v-model="form.user" placeholder="user" /></el-form-item>
+          <el-form-item label="密码"><el-input v-model="form.password" type="password" show-password placeholder="password" /></el-form-item>
+          <el-form-item label="Oracle 客户端目录" v-if="form.type === 'oracle'">
+            <div style="display:flex; gap:8px; width:100%">
+              <el-input v-model="form.oracleLibDir" placeholder="例如 . 或 C:\instantclient（Thick 模式需要）" style="flex:1; min-width:0" />
+              <el-button @click="openDirBrowser">浏览…</el-button>
+            </div>
+            <div style="display:flex; gap:8px; margin-top:6px; flex-wrap:wrap">
+              <el-button size="small" @click="form.oracleLibDir='oci/11.2.0.4'">默认 11.2.0.4</el-button>
+              <el-button size="small" @click="form.oracleLibDir='oci/12.2.0.1'">12.2.0.1</el-button>
+              <el-button size="small" @click="form.oracleLibDir=''">清除</el-button>
+            </div>
+            <div class="hint" style="margin:2px 0 0">项目已自带 11.2.0.4 / 12.2.0.1 两个 Instant Client（位于 <code>oci/</code> 目录），点预设即可；也可「浏览…」自选本机任意目录。仅 Oracle 11g/12c 老版本需要 Thick 模式。</div>
+          </el-form-item>
+          <el-form-item label="默认 Schema" v-if="!isFile(form.type) && !['sqlite','duckdb','mongodb'].includes(form.type)">
+            <el-input v-model="form.defaultSchema" placeholder="如 your_schema（不填则 PostgreSQL 用 public）" />
+            <div class="hint" style="margin:2px 0 0">列出表 / 描述表时默认走该 schema（PostgreSQL / Oracle / MySQL 等适用）；不填则按各类型默认（PostgreSQL 为 public）。</div>
+          </el-form-item>
+        </template>
+        <template v-else>
+          <el-form-item label="文件路径" required><el-input v-model="form.filePath" placeholder="./local.db 或 C:\data\db.sqlite" /></el-form-item>
+          <div class="hint" style="margin:-6px 0 0 92px">sqlite / duckdb 等文件型数据库使用本地文件路径，无需主机与端口。</div>
+        </template>
+        <el-form-item label="启用">
+          <el-switch v-model="form.enabled" />
+          <div class="hint" style="margin:2px 0 0">关闭后该数据源视为暂不使用（占位 / 本地未起等），列表会标记禁用，但配置仍保留。</div>
+        </el-form-item>
+        <el-form-item label="描述" required>
+          <el-input v-model="form.description" type="textarea" :rows="2" placeholder="用途说明 / 该查什么库，给 AI 当提示词（必填）" />
+          <div class="hint" style="margin:2px 0 0">写入 config.db 的 datasources.description 列，随配置返回，避免不知道查哪个库。必填。</div>
+        </el-form-item>
+      </el-form>
+      <div v-if="modalStatus" :class="['status', modalOk ? 'ok' : 'err']">{{ modalOk ? '✓' : '✗' }} {{ modalStatus }}</div>
+      <template #footer>
+        <el-button @click="requestClose">取消</el-button>
+        <el-button @click="testForm" :loading="modalTesting">测试连接</el-button>
+        <el-button type="primary" @click="confirmAdd">保存</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="dirBrowser.visible" title="选择 Oracle 客户端目录" width="600px" :close-on-click-modal="false" append-to-body>
+      <div v-if="dirBrowser.error" class="hint err">{{ dirBrowser.error }}</div>
+      <div class="dir-crumbs">
+        <el-button size="small" :disabled="!dirBrowser.parent" @click="dirGoUp">↑ 上一级</el-button>
+        <code class="dir-path" :title="dirBrowser.path">{{ dirBrowser.path || '(此电脑)' }}</code>
+      </div>
+      <div class="dir-list">
+        <div v-for="d in dirBrowser.drives" :key="d.path" class="dir-item" @click="dirNavigate(d.path)">
+          <span class="dir-ico">💽</span><span class="dir-name">{{ d.name }}</span>
+        </div>
+        <div v-for="d in dirBrowser.dirs" :key="d.path" class="dir-item" @click="dirNavigate(d.path)">
+          <span class="dir-ico">📁</span><span class="dir-name">{{ d.name }}</span>
+        </div>
+        <div v-if="!dirBrowser.drives.length && !dirBrowser.dirs.length" class="hint">（无子目录）</div>
+      </div>
+      <template #footer>
+        <el-button @click="dirBrowser.visible = false">取消</el-button>
+        <el-button type="primary" @click="dirConfirm">选择此目录</el-button>
+      </template>
+    </el-dialog>
+  </div>
+  </el-config-provider>
+</script>
+
+<script src="node_modules/vue/dist/vue.global.prod.js"></script>
+<script src="node_modules/element-plus/dist/index.full.min.js"></script>
+<script>
+  const { createApp, ref, reactive, computed, onMounted } = Vue;
+  const { ElMessage, ElMessageBox } = ElementPlus;
+
+  const TYPES = [].concat(
+    ["postgres","mysql","sqlite","sqlserver","clickhouse","duckdb","oracle"],
+    ["mongodb"]
+  );
+  const TYPE_COLOR = {
+    postgres:"#38bdf8", mysql:"#f59e0b", sqlite:"#a78bfa", sqlserver:"#f472b6",
+    clickhouse:"#34d399", duckdb:"#fbbf24", oracle:"#fb923c", mongodb:"#22d3ee"
+  };
+  const DEFAULT_PORT = { postgres:"5432", mysql:"3306", sqlserver:"1433", clickhouse:"8123", oracle:"1521", mongodb:"27017" };
+  const FILE_TYPES = new Set(["sqlite","duckdb"]);
+  const isFile = (t) => FILE_TYPES.has(t);
+  const colorFor = (t) => TYPE_COLOR[t] || "#64748b";
+  function logoFor(t){
+    const map = { postgres:"postgreSql.png", mysql:"mysql.png", oracle:"oracle.png", sqlserver:"sqlServer.png", kingbase:"kingbase8.png", starrocks:"starrocks.png" };
+    return map[t] ? ("/img/" + map[t]) : "/img/db.png";
+  }
+  function parseConnString(type, url){
+    const it = { type, name:"", host:"", port:"", database:"", user:"", password:"", filePath:"", description:"", enabled:true, showPwd:false, result:null, testing:false, status:"idle", copied:false };
+    if (!url) return it;
+    if (isFile(type)){ const m = url.match(/^\w+:(.+)$/); it.filePath = m ? m[1] : url; return it; }
+    const m = url.match(/^\w+:\/\/(?:([^:@/]+)(?::([^@/]*))?@)?([^:/]+)(?::(\d+))?(?:\/([^?]*))?/);
+    if (m){ it.user = m[1] || ""; it.password = m[2] || ""; it.host = m[3] || ""; it.port = m[4] || ""; it.database = m[5] || ""; }
+    return it;
+  }
+  function buildConnString(it){
+    if (isFile(it.type)) return it.type + ":" + (it.filePath || "");
+    let s = it.type + "://";
+    if (it.user){ s += it.user; if (it.password) s += ":" + it.password; s += "@"; }
+    s += it.host || "";
+    if (it.port) s += ":" + it.port;
+    if (it.database) s += "/" + it.database;
+    return s;
+  }
+  function connMask(it){
+    const full = buildConnString(it);
+    return it.showPwd ? full : full.replace(/:([^:@/]+)@/, ":••••@");
+  }
+  function flatten(ds){
+    const arr = [];
+    for (const type of Object.keys(ds || {}))
+      for (const name of Object.keys(ds[type] || {})){
+        const raw = ds[type][name];
+        const url = (raw && typeof raw === "object" && "url" in raw) ? raw.url : raw;
+        const it = parseConnString(type, url || "");
+        it.name = name;
+        if (raw && typeof raw === "object") {
+          if (type === "oracle") it.oracleLibDir = raw.oracleClientLibDir || "";
+          if (raw.defaultSchema) it.defaultSchema = raw.defaultSchema;
+          if (raw.description) it.description = raw.description;
+          it.enabled = (raw.enabled === 0 || raw.enabled === "0") ? false : true;
+        }
+        arr.push(it);
+      }
+    return arr;
+  }
+  function unflatten(list){
+    const ds = {};
+    for (const it of list){
+      if (isFile(it.type)){ if (!it.filePath) continue; }
+      else { if (!it.host) continue; }
+      const url = buildConnString(it);
+      const name = (it.name || "").trim() || "default";
+      ds[it.type] = ds[it.type] || {};
+      const v = { url };
+      if (it.type === "oracle" && it.oracleLibDir) v.oracleClientLibDir = it.oracleLibDir;
+      if (it.defaultSchema) v.defaultSchema = it.defaultSchema;
+      if (it.description) v.description = it.description;
+      v.enabled = it.enabled ? 1 : 0;
+      ds[it.type][name] = v;
+    }
+    return ds;
+  }
+  // Minimal Chinese locale so el-pagination (and friends) render Chinese text
+  // (goto/pagesize/total). The rest of Element Plus keeps its default locale.
+  const zhCnLocale = {
+    name: "zh-cn",
+    el: {
+      pagination: { goto: "前往", pagesize: "条/页", total: "共 {total} 条", pageClassifier: "" },
+    },
+  };
+
+  const App = {
+    template: "#app-tpl",
+    setup(){
+      const list = ref([]);
+      const view = ref("card");
+      // Pagination: many datasources can overflow one page, so we page both views.
+      const page = ref(1);
+      const pageSize = ref(9);
+      const pagedList = computed(() =>
+        list.value.slice((page.value - 1) * pageSize.value, page.value * pageSize.value)
+      );
+      const pageCount = computed(() => Math.max(1, Math.ceil(list.value.length / pageSize.value)));
+      const theme = ref(localStorage.getItem("dbmcp-theme") || "dark");
+      const dialogVisible = ref(false);
+      const dialogTitle = ref("添加数据源");
+      const editIdx = ref(null);
+      const form = reactive({ type:"postgres", name:"", host:"", port:"", database:"", user:"", password:"", filePath:"", oracleLibDir:"", defaultSchema:"", description:"", enabled:true });
+      const formInitial = ref("");
+      const modalStatus = ref("");
+      const modalOk = ref(true);
+      const modalTesting = ref(false);
+      const statusMsg = ref("");
+      const statusOk = ref(true);
+      const fileInput = ref(null);
+      const dirBrowser = reactive({ visible:false, path:"", parent:null, drives:[], dirs:[], error:"" });
+
+      function snapshotForm(){
+        return JSON.stringify({ ...form });
+      }
+      function formChanged(){ return snapshotForm() !== formInitial.value; }
+
+      async function load(){
+        try {
+          const cfg = await (await fetch("/api/config")).json();
+          list.value = flatten(cfg.datasources);
+          // Clamp page back into range if the list shrank (e.g. after delete/import).
+          if (page.value > pageCount.value) page.value = pageCount.value;
+        } catch(e){ ElMessage.error("加载配置失败: " + e.message); }
+      }
+
+      function onPageChange(p){
+        page.value = p;
+        document.querySelector(".wrap")?.scrollIntoView({ behavior:"smooth", block:"start" });
+      }
+
+      function applyTheme(){
+        document.documentElement.classList.toggle("dark", theme.value === "dark");
+      }
+      function toggleTheme(){
+        theme.value = theme.value === "dark" ? "light" : "dark";
+        applyTheme(); localStorage.setItem("dbmcp-theme", theme.value);
+      }
+
+      function togglePwd(i){ const it = list.value[i]; if (it) it.showPwd = !it.showPwd; }
+      function statusTitle(it){
+        const s = it.status || "idle";
+        return { idle:"未测试", testing:"测试中…", ok:"连接正常", err:"连接失败" }[s] || "未测试";
+      }
+      // Copy the connection string; flash a check glyph for ~1.5s after success.
+      const COPIED_TTL = 1500;
+      async function copyConn(i){
+        const it = list.value[i]; if (!it) return;
+        try {
+          await navigator.clipboard.writeText(buildConnString(it));
+          it.copied = true;
+          if (it.copyTimer) clearTimeout(it.copyTimer);
+          it.copyTimer = setTimeout(() => { it.copied = false; it.copyTimer = null; }, COPIED_TTL);
+          ElMessage.success("已复制连接串");
+        } catch(e){ ElMessage.error("复制失败: " + e.message); }
+      }
+
+      // Connection status shown as a colored dot on the card/row:
+      //   idle (grey, not tested), testing (blue, pulsing),
+      //   ok (green), err (red). The dot persists after testing — it stays
+      //   green/red until the next test, so there's no auto-hide timer.
+      async function testItem(i){
+        const it = list.value[i];
+        const url = buildConnString(it);
+        if ((isFile(it.type) && !it.filePath) || (!isFile(it.type) && !it.host)){ ElMessage.error("请先填写完整连接信息"); return; }
+        it.testing = true;
+        it.status = "testing";         // dot pulses blue while testing
+        try {
+          const body = { type: it.type, url };
+          if (it.type === "oracle") body.oracleClientLibDir = it.oracleLibDir;
+          const j = await (await fetch("/api/test", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body) })).json();
+          it.result = j.ok ? { ok:true, msg:j.message } : { ok:false, msg:j.error };
+          it.status = j.ok ? "ok" : "err";   // dot turns green/red and stays
+        } catch(e){
+          it.result = { ok:false, msg:e.message };
+          it.status = "err";
+        }
+        it.testing = false;
+      }
+      async function testAll(){
+        if (!list.value.length) return;
+        let tested = 0, skipped = 0, ok = 0;
+        for (let i = 0; i < list.value.length; i++){
+          const it = list.value[i];
+          if (it.enabled === false){ skipped++; continue; }
+          await testItem(i);
+          if (it.status === "ok") ok++;
+          tested++;
+        }
+        ElMessage.success("已测试 " + tested + " 个（跳过禁用 " + skipped + " 个，连通 " + ok + " 个）");
+      }
+
+      // Toggle a source's enabled flag and persist immediately (no full-save button).
+      async function toggleEnabled(row){
+        await persist();
+        ElMessage.success((row.enabled ? "已启用" : "已禁用") + "：" + row.type + "/" + row.name);
+      }
+
+      function openAdd(){
+        editIdx.value = null; dialogTitle.value = "添加数据源";
+        Object.assign(form, { type:"postgres", name:"", host:"", port:DEFAULT_PORT.postgres, database:"", user:"", password:"", filePath:"", oracleLibDir:"", defaultSchema:"", description:"", enabled:true });
+        dialogVisible.value = true; formInitial.value = snapshotForm(); modalStatus.value = "";
+      }
+      function openEdit(i){
+        editIdx.value = i; dialogTitle.value = "编辑数据源";
+        const it = list.value[i];
+        Object.assign(form, { type:it.type, name:it.name, host:it.host, port:it.port, database:it.database, user:it.user, password:it.password, filePath:it.filePath, oracleLibDir: it.oracleLibDir || "", defaultSchema: it.defaultSchema || "", description: it.description || "", enabled: it.enabled ?? true });
+        dialogVisible.value = true; formInitial.value = snapshotForm(); modalStatus.value = "";
+      }
+      function onTypeChange(t){
+        if (!isFile(t)){ if (!form.port) form.port = DEFAULT_PORT[t] || ""; }
+      }
+      async function dirLoad(path){
+        dirBrowser.error = "";
+        try {
+          const j = await (await fetch("/api/dirs", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ path }) })).json();
+          dirBrowser.path = j.path || "";
+          dirBrowser.parent = j.parent || null;
+          dirBrowser.drives = j.drives || [];
+          dirBrowser.dirs = j.dirs || [];
+          if (j.error) dirBrowser.error = j.error;
+        } catch(e){ dirBrowser.error = e.message; }
+      }
+      async function openDirBrowser(){
+        dirBrowser.visible = true;
+        await dirLoad(form.oracleLibDir || "");
+      }
+      function dirNavigate(p){ dirLoad(p); }
+      function dirGoUp(){ if (dirBrowser.parent) dirLoad(dirBrowser.parent); }
+      function dirConfirm(){ form.oracleLibDir = dirBrowser.path; dirBrowser.visible = false; }
+      function removeItem(i){
+        list.value.splice(i, 1);
+        persist();
+      }
+      function confirmAdd(){
+        if (!form.name.trim()){ ElMessage.error("请填写名称"); return; }
+        if (isFile(form.type)){ if (!form.filePath.trim()){ ElMessage.error("请填写文件路径"); return; } }
+        else { if (!form.host.trim()){ ElMessage.error("请填写主机 / IP"); return; } }
+        if (!form.description.trim()){ ElMessage.error("请填写描述（用途说明，给 AI 当提示词，必填）"); return; }
+        const it = { type:form.type, name:form.name.trim(), host:form.host, port:form.port, database:form.database, user:form.user, password:form.password, filePath:form.filePath, oracleLibDir: form.oracleLibDir || "", defaultSchema: form.defaultSchema || "", description: form.description || "", enabled: !!form.enabled, showPwd:false, result:null, testing:false, status:"idle", copied:false };
+        if (editIdx.value != null) list.value[editIdx.value] = it; else list.value.push(it);
+        dialogVisible.value = false;
+        ElMessage.success(editIdx.value != null ? "已更新数据源" : "已添加数据源");
+        persist();
+      }
+
+      async function testForm(){
+        if (!form.name.trim()){ ElMessage.error("请填写名称"); return; }
+        if (isFile(form.type)){ if (!form.filePath.trim()){ ElMessage.error("请填写文件路径"); return; } }
+        else { if (!form.host.trim()){ ElMessage.error("请填写主机 / IP"); return; } }
+        modalTesting.value = true; modalStatus.value = "正在连接…"; modalOk.value = true;
+        try {
+          const url = buildConnString(form);
+          const body = { type: form.type, url };
+          if (form.type === "oracle") body.oracleClientLibDir = form.oracleLibDir;
+          const j = await (await fetch("/api/test", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body) })).json();
+          if (j.ok){ modalStatus.value = "✓ " + j.message; modalOk.value = true; }
+          else { modalStatus.value = "✗ " + j.error; modalOk.value = false; }
+        } catch(e){ modalStatus.value = "✗ " + e.message; modalOk.value = false; }
+        finally { modalTesting.value = false; }
+      }
+
+      function requestClose(){
+        if (formChanged()){
+          ElMessageBox.confirm("确定放弃修改吗？已填写的内容将不会保存。", "提示", { confirmButtonText:"确定", cancelButtonText:"取消", type:"warning" })
+            .then(() => { dialogVisible.value = false; }).catch(() => {});
+        } else { dialogVisible.value = false; }
+      }
+      function handleClose(done){
+        if (formChanged()){
+          ElMessageBox.confirm("确定放弃修改吗？已填写的内容将不会保存。", "提示", { confirmButtonText:"确定", cancelButtonText:"取消", type:"warning" })
+            .then(() => done()).catch(() => {});
+        } else { done(); }
+      }
+
+      // Persist the whole config (datasources, each Oracle row carrying its own
+      // oracleClientLibDir) to the DB. Called automatically on every meaningful
+      // change so the main "保存配置" button is unnecessary.
+      async function persist(){
+        const cfg = { datasources: unflatten(list.value) };
+        try {
+          const j = await (await fetch("/api/config", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(cfg) })).json();
+          if (j.ok){ statusMsg.value = "已自动保存"; statusOk.value = true; return true; }
+          else { ElMessage.error("保存失败: " + j.error); statusMsg.value = j.error; statusOk.value = false; return false; }
+        } catch(e){ ElMessage.error("保存失败: " + e.message); statusMsg.value = e.message; statusOk.value = false; return false; }
+      }
+
+      async function exportCfg(){
+        try {
+          const j = await (await fetch("/api/config")).json();
+          const blob = new Blob([JSON.stringify(j, null, 2)], { type:"application/json" });
+          const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
+          a.download = "db-mcp-config.json"; a.click(); URL.revokeObjectURL(a.href);
+          ElMessage.success("已导出 db-mcp-config.json");
+        } catch(e){ ElMessage.error("导出失败: " + e.message); }
+      }
+      function pickFile(){ if (fileInput.value) fileInput.value.click(); }
+      async function onFileChange(e){
+        const f = e.target.files[0]; if (!f) return;
+        const fr = new FileReader();
+        fr.onload = async () => {
+          try {
+            const j = JSON.parse(fr.result);
+            if (!j || typeof j !== "object" || !j.datasources) throw new Error("格式不正确，缺少 datasources");
+            const resp = await (await fetch("/api/config", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(j) })).json();
+            if (!resp.ok) throw new Error(resp.error || "保存失败");
+            ElMessage.success("导入成功，已加载"); load();
+          } catch(err){ ElMessage.error("导入失败: " + err.message); }
+          e.target.value = "";
+        };
+        fr.readAsText(f);
+      }
+
+      onMounted(() => { applyTheme(); load(); });
+
+      return {
+        list, view, theme, dialogVisible, dialogTitle, form,
+        page, pageSize, pageCount, pagedList, onPageChange, zhCnLocale,
+        modalStatus, modalOk, modalTesting, statusMsg, statusOk, fileInput, dirBrowser,
+        TYPES,
+        toggleTheme, togglePwd, copyConn, testItem, testAll, toggleEnabled, statusTitle,
+        openAdd, openEdit, onTypeChange, removeItem, confirmAdd, testForm, requestClose, handleClose,
+        openDirBrowser, dirNavigate, dirGoUp, dirConfirm,
+        persist, exportCfg, pickFile, onFileChange, connMask, colorFor, logoFor, isFile
+      };
+    }
+  };
+
+  const app = createApp(App);
+  app.use(ElementPlus);
+  app.mount("#app");
+</script>
+</body>
+</html>
